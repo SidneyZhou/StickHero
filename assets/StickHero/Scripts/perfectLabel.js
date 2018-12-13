@@ -26,8 +26,8 @@ cc.Class({
         cc.log("removeLabel");
     },
     showLabel(){
-        // this.node.x = cc.director.getWinSize().width/2;
-        // this.node.y = cc.director.getWinSize().height/2;
+        // this.node.x = cc.winSize.width/2;
+        // this.node.y = cc.winSize.height/2;
         cc.log("showLabel");
     }
 });

@@ -1,101 +1,105 @@
 var spriteCreator = require("spriteCreator");
 var perfectLabel = require("perfectLabel");
 var storageManager = require("storageManager");
-var fsm = new StateMachine({
-    data:{
-        gameDirector:null,
-    },
-    init: 'stand',
-    transitions:[
-        {name:'stickLengthen',from:'stand',to:'stickLengthened'},
-        {name:'heroTick',from:'stickLengthened',to:'heroTicked'},
-        {name:'stickFall',from:'heroTicked',to:'stickFalled'},
-        {name:'heroMoveToLand',from:'stickFalled',to:'heroMovedToLand'},
-        {name:'landMove',from:'heroMovedToLand',to:'stand'},
-        {name:'heroMoveToStickEnd',from:'stickFalled',to:'heroMovedToStickEnd'},
-        {name:'heroDown',from:'heroMovedToStickEnd',to:'heroDowned'},
-        {name:'gameOver',from:'heroDowned',to:'end'},
-        {name:'restart',from:'end',to:'stand'},
-    ],
-    methods:{
-        onLeaveHeroTicked(){
-            gameDirector.unregisterEvent();
+var fsm;
+function initFSM(){
+    console.log("initFSM")
+    fsm = new StateMachine({
+        data: {
+            gameDirector: null,
         },
-        onStickLengthen(){
-            gameDirector.stickLengthen = true;
-            gameDirector.stick = gameDirector.createStick();
-            gameDirector.stick.x = gameDirector.hero.x + gameDirector.hero.width * (1-gameDirector.hero.anchorX) + gameDirector.stick.width * gameDirector.stick.anchorX;
-            var ani = gameDirector.hero.getComponent(cc.Animation);
-            ani.play('heroPush');
-        },
-        onHeroTick(){
-            gameDirector.stickLengthen = false;
-            var ani = gameDirector.hero.getComponent(cc.Animation);
-            ani.play('heroTick');
-        },
-        onStickFall(){
-            //stick fall action.
-            var stickFall = cc.rotateBy(0.5, 90);
-            stickFall.easing(cc.easeIn(3));
-            var callFunc = cc.callFunc(function(){
-                var stickLength = gameDirector.stick.height-gameDirector.stick.width * gameDirector.stick.anchorX;
-                if(stickLength < gameDirector.currentLandRange || stickLength > gameDirector.currentLandRange+gameDirector.secondLand.width){//failed.
-                    fsm.heroMoveToStickEnd();
-                }else{//successed
-                    fsm.heroMoveToLand();
-                    if(stickLength > gameDirector.currentLandRange + gameDirector.secondLand.width/2-5 
-                        &&stickLength < gameDirector.currentLandRange + gameDirector.secondLand.width/2+5){
-                        gameDirector.perfect ++;
-                        gameDirector.getScore(gameDirector.perfect);
-                        var pl = gameDirector.perfectLabel.getComponent(perfectLabel);
-                        pl.showPerfect(gameDirector.perfect);
-                    }else{
-                        gameDirector.perfect = 0;
+        init: 'stand',
+        transitions: [
+            { name: 'stickLengthen', from: 'stand', to: 'stickLengthened' },
+            { name: 'heroTick', from: 'stickLengthened', to: 'heroTicked' },
+            { name: 'stickFall', from: 'heroTicked', to: 'stickFalled' },
+            { name: 'heroMoveToLand', from: 'stickFalled', to: 'heroMovedToLand' },
+            { name: 'landMove', from: 'heroMovedToLand', to: 'stand' },
+            { name: 'heroMoveToStickEnd', from: 'stickFalled', to: 'heroMovedToStickEnd' },
+            { name: 'heroDown', from: 'heroMovedToStickEnd', to: 'heroDowned' },
+            { name: 'gameOver', from: 'heroDowned', to: 'end' },
+            { name: 'restart', from: 'end', to: 'stand' },
+        ],
+        methods: {
+            onLeaveHeroTicked() {
+                gameDirector.unregisterEvent();
+            },
+            onStickLengthen() {
+                gameDirector.stickLengthen = true;
+                gameDirector.stick = gameDirector.createStick();
+                gameDirector.stick.x = gameDirector.hero.x + gameDirector.hero.width * (1 - gameDirector.hero.anchorX) + gameDirector.stick.width * gameDirector.stick.anchorX;
+                var ani = gameDirector.hero.getComponent(cc.Animation);
+                ani.play('heroPush');
+            },
+            onHeroTick() {
+                gameDirector.stickLengthen = false;
+                var ani = gameDirector.hero.getComponent(cc.Animation);
+                ani.play('heroTick');
+            },
+            onStickFall() {
+                //stick fall action.
+                var stickFall = cc.rotateBy(0.5, 90);
+                stickFall.easing(cc.easeIn(3));
+                var callFunc = cc.callFunc(function () {
+                    var stickLength = gameDirector.stick.height - gameDirector.stick.width * gameDirector.stick.anchorX;
+                    if (stickLength < gameDirector.currentLandRange || stickLength > gameDirector.currentLandRange + gameDirector.secondLand.width) {//failed.
+                        fsm.heroMoveToStickEnd();
+                    } else {//successed
+                        fsm.heroMoveToLand();
+                        if (stickLength > gameDirector.currentLandRange + gameDirector.secondLand.width / 2 - 5
+                            && stickLength < gameDirector.currentLandRange + gameDirector.secondLand.width / 2 + 5) {
+                            gameDirector.perfect++;
+                            gameDirector.getScore(gameDirector.perfect);
+                            var pl = gameDirector.perfectLabel.getComponent(perfectLabel);
+                            pl.showPerfect(gameDirector.perfect);
+                        } else {
+                            gameDirector.perfect = 0;
+                        }
                     }
-                }
-            });
-            var se =cc.sequence(stickFall,callFunc);
-            gameDirector.stick.runAction(se);
-        },
-        onHeroMoveToLand(){
-            var ani = gameDirector.hero.getComponent(cc.Animation);
-            var callFunc = cc.callFunc(function(){
-                ani.stop('heroRun');
-                gameDirector.getScore();
-                fsm.landMove();
-            });
-            ani.play('heroRun');
-            gameDirector.heroMove(gameDirector.hero,{length:gameDirector.currentLandRange+gameDirector.secondLand.width,callFunc:callFunc});
-        },
-        onLandMove(){
-            var callFunc = cc.callFunc(function(){
-                gameDirector.registerEvent();
-            });
-            gameDirector.landCreateAndMove(callFunc);
-        },
-        onHeroMoveToStickEnd(){
-            var ani = gameDirector.hero.getComponent(cc.Animation);
-            var callFunc = cc.callFunc(function(){
-                ani.stop('heroRun');
-                fsm.heroDown();
-            });
-            ani.play('heroRun');
-            gameDirector.heroMove(gameDirector.hero,{length:gameDirector.stick.height,callFunc:callFunc});
-        },
-        onHeroDown(){
-             var callFunc = cc.callFunc(function(){
-                fsm.gameOver();
-            });
-            gameDirector.stickAndHeroDownAction(callFunc);
-        },
-        onGameOver(){
-            gameDirector.overLabel.node.active = true;
-        },
-        onRestart(){
-            cc.director.loadScene("MainGameScene");
+                });
+                var se = cc.sequence(stickFall, callFunc);
+                gameDirector.stick.runAction(se);
+            },
+            onHeroMoveToLand() {
+                var ani = gameDirector.hero.getComponent(cc.Animation);
+                var callFunc = cc.callFunc(function () {
+                    ani.stop('heroRun');
+                    gameDirector.getScore();
+                    fsm.landMove();
+                });
+                ani.play('heroRun');
+                gameDirector.heroMove(gameDirector.hero, { length: gameDirector.currentLandRange + gameDirector.secondLand.width, callFunc: callFunc });
+            },
+            onLandMove() {
+                var callFunc = cc.callFunc(function () {
+                    gameDirector.registerEvent();
+                });
+                gameDirector.landCreateAndMove(callFunc);
+            },
+            onHeroMoveToStickEnd() {
+                var ani = gameDirector.hero.getComponent(cc.Animation);
+                var callFunc = cc.callFunc(function () {
+                    ani.stop('heroRun');
+                    fsm.heroDown();
+                });
+                ani.play('heroRun');
+                gameDirector.heroMove(gameDirector.hero, { length: gameDirector.stick.height, callFunc: callFunc });
+            },
+            onHeroDown() {
+                var callFunc = cc.callFunc(function () {
+                    fsm.gameOver();
+                });
+                gameDirector.stickAndHeroDownAction(callFunc);
+            },
+            onGameOver() {
+                gameDirector.overLabel.node.active = true;
+            },
+            onRestart() {
+                cc.director.loadScene("MainGameScene");
+            }
         }
-    }
-});
+    });
+}
 var gameDirector = null;
 cc.Class({
     extends: cc.Component,
@@ -118,6 +122,7 @@ cc.Class({
         perfectLabel:cc.Node
     },
     onLoad: function () {
+        initFSM();
         //init data
         // alert(storageManager.getHighestScore());
         gameDirector = this;
@@ -140,6 +145,7 @@ cc.Class({
         //init hero animation callback.
         var ani = gameDirector.hero.getComponent(cc.Animation);
         ani.on('stop',(event)=>{
+            console.log(event.target)
             if(event.target.name =='heroTick'){
                 fsm.stickFall();
             }
@@ -196,7 +202,7 @@ cc.Class({
         }
     },
     landCreateAndMove(callFunc) {
-        var winSize = cc.director.getWinSize();
+        var winSize = cc.winSize;
         //firstland;
         var length = this.currentLandRange + this.secondLand.width;
         this.runLength +=length;
@@ -243,7 +249,7 @@ cc.Class({
     },
     getLandRange(){
         this.currentLandRange = this.landRange.x +(this.landRange.y - this.landRange.x)*Math.random();
-        var winSize = cc.director.getWinSize();
+        var winSize = cc.winSize;
         if(winSize.width < this.currentLandRange + this.heroWorldPosX + this.hero.width + this.secondLand.width){
             this.currentLandRange = winSize.width - this.heroWorldPosX - this.hero.width - this.secondLand.width;
         }
